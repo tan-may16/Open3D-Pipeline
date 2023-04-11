@@ -48,6 +48,7 @@ def scalable_integrate_rgb_frames(path_dataset, intrinsic, config):
                                    depth_files[frame_id_abs], False, config)
             pose = np.dot(pose_graph_fragment.nodes[fragment_id].pose,
                           pose_graph_rgbd.nodes[frame_id].pose)
+            print(frame_id, pose)
             volume.integrate(rgbd, intrinsic, np.linalg.inv(pose))
             poses.append(pose)
 

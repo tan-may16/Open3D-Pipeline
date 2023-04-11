@@ -67,9 +67,23 @@ if __name__ == "__main__":
         "[example: cpu:0, cuda:0].",
         type=str,
         default='cpu:0')
+    parser.add_argument(
+        '--max_depth',
+        help="(optional) select max depth to process",
+        type=int,
+        default= -1)
+    parser.add_argument(
+        '--tsdf_size',
+        help="(optional) select voxel size",
+        type=float,
+        default= -1)
+    parser.add_argument(
+        "--visualize",
+        help="Whether to visualize the pointcloud",
+        action="store_true")
+    
 
     args = parser.parse_args()
-
     if not args.make and \
             not args.register and \
             not args.refine and \
@@ -88,7 +102,11 @@ if __name__ == "__main__":
     else:
         # load deafult dataset.
         config = dataset_loader(args.default_dataset)
-
+    if (args.max_depth != -1):
+        config["depth_max"] = args.max_depth
+    if (args.tsdf_size != -1):
+        config["tsdf_cubic_size"] = args.tsdf_size
+    
     assert config is not None
 
     if args.debug_mode:
@@ -135,6 +153,33 @@ if __name__ == "__main__":
         import slac_integrate
         slac_integrate.run(config)
         times[5] = time.time() - start_time
+        
+    if (args.integrate and args.visualize):
+        
+        point_cloud_file = os.path.join(os.path.join(config['path_dataset'],config["folder_scene"]), "integrated.ply")
+        pcd = o3d.io.read_point_cloud(point_cloud_file)
+        o3d.visualization.draw_geometries([pcd], window_name='Integrated_pointcloud', width = 800, height = 600)
+    
+    
+    if not os.path.exists(os.path.join(config['path_dataset'], "time.txt")):
+        f = open(os.path.join(config['path_dataset'], "time.txt"), "x")
+    else:
+        f = open("time.txt", "w")
+    lines = [
+        "==================================== \n",
+        "Elapsed time (in h:m:s) \n",
+        "==================================== \n",
+        "- Making fragments    %s  \n" % datetime.timedelta(seconds=times[0]),
+        "- Register fragments  %s  \n" % datetime.timedelta(seconds=times[1]),
+        "- Refine registration %s  \n" % datetime.timedelta(seconds=times[2]),
+        "- Integrate frames    %s  \n" % datetime.timedelta(seconds=times[3]),
+        "- Integrate frames    %s  \n" % datetime.timedelta(seconds=times[3]),
+        "- SLAC                %s  \n" % datetime.timedelta(seconds=times[4]),
+        "- SLAC Integrate      %s  \n" % datetime.timedelta(seconds=times[5]),
+        "- Total               %s  \n" % datetime.timedelta(seconds=sum(times))
+    ]
+    f.writelines(lines)
+    f.close()
 
     print("====================================")
     print("Elapsed time (in h:m:s)")
@@ -146,4 +191,12 @@ if __name__ == "__main__":
     print("- SLAC                %s" % datetime.timedelta(seconds=times[4]))
     print("- SLAC Integrate      %s" % datetime.timedelta(seconds=times[5]))
     print("- Total               %s" % datetime.timedelta(seconds=sum(times)))
+    
+    if (not args.integrate and args.visualize and args.make):
+        
+        point_cloud_file = os.path.join(os.path.join(config['path_dataset'],config["folder_fragment"]), "fragment_000.ply")
+        pcd = o3d.io.read_point_cloud(point_cloud_file)
+        o3d.visualization.draw_geometries([pcd], window_name='Fragmented_pointclouds', width = 800, height = 600)
+        
+    
     sys.stdout.flush()
